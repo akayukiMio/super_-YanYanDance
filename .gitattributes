@@ -1,0 +1,27 @@
+# =============================================================================
+#  行尾与二进制策略。本项目只在 Windows 上跑（PowerShell 5.1 / cmd / .lnk）。
+#  做法：仓库内统一存 LF（diff 干净、跨工具友好），签出统一 CRLF（Windows 习惯）。
+#  .ps1 的 UTF-8 BOM 属于文件内容，不受行尾转换影响（tools\fix_encoding.ps1 负责补）。
+# =============================================================================
+
+* text eol=crlf
+
+# 图片/图标：禁止任何行尾与文本 diff 处理
+*.ico  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.mp4  binary
+*.ts   binary
+
+# 明确当文本处理并保留 diff 的文件类型（便于以后 git log 里可读）
+*.ps1   text eol=crlf
+*.cmd   text eol=crlf
+*.mjs   text eol=crlf
+*.js    text eol=crlf
+*.css   text eol=crlf
+*.html  text eol=crlf
+*.md    text eol=crlf
+*.json  text eol=crlf

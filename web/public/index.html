@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>画廊搬运台 · 控制台</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+
+<!-- ───────────────────────── 图标精灵（无外网依赖） ───────────────────────── -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M5 12a10 10 0 0 1 14 0M8.5 15.5a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19" r="1"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 6.4M20 5v6h-6"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="m4 18 5-5 3.5 3.5L16 13l4 4"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 4v16M16 4v16M3 9h5M3 15h5M16 9h5M16 15h5"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.2-2.9 7.5-7 9-4.1-1.5-7-4.8-7-9V6l7-3z"/><path d="m9 12 2.2 2.2L15.5 10"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18v-4l3-3"/></symbol>
+    <symbol id="i-folder-search" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v2"/><path d="M3 9v8a2 2 0 0 0 2 2h7"/><circle cx="17.5" cy="16.5" r="3"/><path d="m20 19 2 2"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="m3 13 9 5 9-5"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5"/></symbol>
+    <symbol id="i-broom" viewBox="0 0 24 24"><path d="M14 4l6 6-4 4-6-6 4-4z"/><path d="M10 10 4.5 15.5A3 3 0 0 0 4 18.7V20h2l1.3-.5L14 14"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a4 4 0 0 0 5.7.4l2.6-2.6a4 4 0 0 0-5.7-5.7L11 6.4"/><path d="M14 11a4 4 0 0 0-5.7-.4L5.7 13.2a4 4 0 0 0 5.7 5.7L13 17.6"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="16" rx="3"/><path d="m7 9 3 3-3 3M12.5 15h4"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 20h16"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14a8.5 8.5 0 1 1-10-10 7 7 0 0 0 10 10z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <!-- ───────────────────────── 侧栏 ───────────────────────── -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark"><svg><use href="#i-layers"/></svg></div>
+      <div>
+        <h1>画廊搬运台</h1>
+        <p>画廊同步 · 下载 · 体检</p>
+      </div>
+    </div>
+
+    <nav id="nav" class="nav"></nav>
+
+    <div class="side-block">
+      <h2 class="side-title">最近任务</h2>
+      <ul id="history" class="history"><li class="empty">还没有跑过任务</li></ul>
+    </div>
+
+    <div class="side-foot">
+      <button class="ghost-btn" id="themeBtn"><svg class="ic"><use href="#i-moon"/></svg><span>深色 / 浅色</span></button>
+      <p>引擎仍是 PowerShell：<br>本页面只负责编排与展示</p>
+    </div>
+  </aside>
+
+  <!-- ───────────────────────── 主区 ───────────────────────── -->
+  <main class="main">
+    <header class="topbar">
+      <div class="chips" id="chips"><span class="chip skeleton"></span><span class="chip skeleton"></span><span class="chip skeleton"></span></div>
+      <div class="topbar-right">
+        <span class="svc" id="svc"><i class="dot"></i>连接中…</span>
+        <button class="ghost-btn" id="refreshBtn" title="刷新状态"><svg class="ic"><use href="#i-refresh"/></svg><span>刷新</span></button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-main">
+        <p class="eyebrow">日常主流程</p>
+        <h2 id="heroTitle">先自检，再一键增量搬运</h2>
+        <p class="hero-desc" id="heroDesc">拉取上游仓库 → 按「整页哈希 + 画廊签名」两级比对识别真新增 → 重命名入库 → 下载图片与 HLS 视频 → 自动回收 pending。可反复执行，天然断点续跑。</p>
+        <div class="hero-actions">
+          <button class="btn primary big" data-run="oneclick"><svg class="ic"><use href="#i-bolt"/></svg><span>一键增量搬运</span></button>
+          <button class="btn" data-run="netcheck"><svg class="ic"><use href="#i-wifi"/></svg><span>网络自检</span></button>
+          <button class="btn" data-run="dryrun"><svg class="ic"><use href="#i-eye"/></svg><span>只看更新</span></button>
+          <button class="btn" data-run="auditAll"><svg class="ic"><use href="#i-shield"/></svg><span>全量体检</span></button>
+        </div>
+        <p class="hint">开着代理 / VPN 时，请确认 <b>127.0.0.1 与 localhost 在直连（bypass）名单里</b>：否则页面请求会绕代理一圈，日志会明摆着卡顿（而下载本身并没那么慢）。</p>
+      </div>
+      <div class="hero-side" id="heroSide">
+        <div class="ring"><span id="ringNum">–</span></div>
+        <div class="ring-label" id="ringLabel">读取状态中…</div>
+      </div>
+    </section>
+
+    <div id="groups"></div>
+
+    <section class="panel local-panel" id="g-local">
+      <h3 class="panel-title">本机操作</h3>
+      <div class="local-grid">
+        <button class="btn" data-local="outdir"><svg class="ic"><use href="#i-folder"/></svg><span>打开产物目录</span></button>
+        <button class="btn" data-local="logdir"><svg class="ic"><use href="#i-folder"/></svg><span>打开日志目录</span></button>
+        <button class="btn" data-local="doc"><svg class="ic"><use href="#i-doc"/></svg><span>打开 PROJECT.md</span></button>
+        <button class="btn" data-local="shortcut"><svg class="ic"><use href="#i-link"/></svg><span>创建桌面快捷方式</span></button>
+      </div>
+      <p class="hint" id="localResult">本机操作 · 还没有点过。按钮由本机服务代为执行，所以服务只监听 127.0.0.1；若要开放给局域网，必须先加鉴权。</p>
+    </section>
+
+    <footer class="foot">
+      <span id="footPaths">—</span>
+    </footer>
+  </main>
+
+  <!-- ───────────────────────── 日志坞 ───────────────────────── -->
+  <section class="dock collapsed" id="dock">
+    <div class="dock-bar">
+      <button class="dock-toggle" id="dockToggle" title="展开/收起"><svg class="ic"><use href="#i-terminal"/></svg></button>
+      <div class="dock-title">
+        <strong id="dockName">运行日志</strong>
+        <span class="badge" id="dockBadge" hidden>只读</span>
+        <span class="dock-status" id="dockStatus">空闲</span>
+      </div>
+      <div class="dock-progress" id="dockProgressWrap" hidden>
+        <div class="dock-progress-inner"><i id="dockBar"></i></div>
+        <span id="dockMeta"></span>
+      </div>
+      <div class="dock-tools">
+        <button class="ghost-btn" id="logDl" title="下载完整日志"><svg class="ic"><use href="#i-download"/></svg></button>
+        <button class="ghost-btn" id="logClear" title="清空显示"><svg class="ic"><use href="#i-x"/></svg></button>
+        <button class="ghost-btn danger" id="jobStop" hidden><svg class="ic"><use href="#i-stop"/></svg><span>停止</span></button>
+      </div>
+    </div>
+    <div class="dock-body" id="dockBody">
+      <pre class="log" id="log"><span class="log-hint">选择上面的操作，日志会实时出现在这里。</span></pre>
+      <button class="jump-latest" id="jumpLatest" hidden>跳到最新 ↓</button>
+    </div>
+  </section>
+</div>
+
+<!-- ───────────────────────── 弹窗 ───────────────────────── -->
+<div class="scrim" id="scrim"></div>
+
+<div class="modal" id="paramModal" role="dialog" aria-modal="true" aria-labelledby="paramTitle">
+  <div class="modal-head"><h3 id="paramTitle">选择范围</h3><button class="ghost-btn" data-close><svg class="ic"><use href="#i-x"/></svg></button></div>
+  <div class="modal-body">
+    <p class="modal-desc" id="paramDesc"></p>
+    <div class="field">
+      <label for="selYear">年份</label>
+      <select id="selYear"></select>
+      <label for="selMonth">月份</label>
+      <select id="selMonth"></select>
+      <span class="field-meta" id="monthMeta"></span>
+    </div>
+    <label class="check" id="probeWrap" hidden>
+      <input type="checkbox" id="chkProbe"> 实地探测缺口（区分死链 / 可补，会发真实请求，慢）
+    </label>
+  </div>
+  <div class="modal-foot">
+    <button class="btn" data-close>取消</button>
+    <button class="btn primary" id="paramOk">开始执行</button>
+  </div>
+</div>
+
+<div class="modal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="modal-head danger"><h3 id="confirmTitle">危险操作确认</h3><button class="ghost-btn" data-close><svg class="ic"><use href="#i-x"/></svg></button></div>
+  <div class="modal-body">
+    <p class="modal-desc" id="confirmDesc"></p>
+    <div class="field">
+      <label for="confirmInput">请输入 <b id="confirmWord">YES</b> 以确认</label>
+      <input id="confirmInput" autocomplete="off" spellcheck="false" placeholder="区分大小写">
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn" data-close>取消</button>
+    <button class="btn danger" id="confirmOk" disabled>确认执行</button>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="app.js" type="module"></script>
+</body>
+</html>
