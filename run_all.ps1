@@ -558,6 +558,29 @@ foreach ($k in $stat.Keys) {
 }
 if (-not $anyFail) { Write-Host "`n  无失败项。" -ForegroundColor Green }
 Write-Host ""
+
+# ---------- 回写 manifest lastProcessed ----------
+# 下载完成后把 manifest 里对应行的 lastProcessed 从今天起标记，否则下次 sync 无法区分“已下”和“未下”
+try {
+    if ([System.IO.File]::Exists($Cfg.Manifest)) {
+        $manLines = [System.IO.File]::ReadAllLines($Cfg.Manifest, [System.Text.Encoding]::UTF8)
+        if ($manLines.Count -gt 1) {
+            $csv = $manLines | ConvertFrom-Csv
+            $today = Get-Date -Format 'yyyy-MM-dd'
+            $manUpdated = 0
+            foreach ($k in $stat.Keys) {
+                $entry = $csv | Where-Object { $_.datedName -eq $k } | Select-Object -First 1
+                if ($entry) { $entry.lastProcessed = $today; $manUpdated++ }
+            }
+            if ($manUpdated -gt 0) {
+                $csv | Export-Csv -LiteralPath $Cfg.Manifest -NoTypeInformation -Encoding UTF8
+                Write-Host ("  manifest 已更新 lastProcessed: {0} 项" -f $manUpdated) -ForegroundColor DarkGreen
+            }
+        }
+    }
+} catch {
+    Write-Host ("  manifest lastProcessed 回写失败（不影响下载）: {0}" -f $_.Exception.Message) -ForegroundColor Yellow
+}
 if (-not $NoProgress) {
     Write-Progress -Id 1 -Activity 'Overall' -Completed
     Write-Progress -Id 2 -Activity 'Images' -Completed -ErrorAction SilentlyContinue

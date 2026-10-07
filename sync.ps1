@@ -11,6 +11,8 @@
                               复制到 repo_html\ 基线 → 追加 manifest → 写入 pending.txt
       3) -Run 时调用 run_all.ps1 -ListFile pending.txt 只处理新增项目
     两级比对的作用：上游改文件名仍能识别（靠签名）；同一画廊重复投稿不会再下一遍（也靠签名）。
+    上游修改已有项目：如果同标题同日期的 HTML 媒体内容（图片/视频 URL）有增减，会更新 manifest 条目并补下新增部分到原文件夹；
+    如果只是改了文案/推广文字而媒体未变，视为别名跳过。
     重要：本脚本只看 pending，绝不回查/回补历史项目的产物，
          所以你手动删掉的产物文件夹不会被自动恢复（查看被删项：maint.ps1 -Action MissingOut）。
 .PARAMETER DryRun
@@ -132,6 +134,7 @@ $today = Get-Date -Format 'yyyy-MM-dd'
 
 $new = @(); $updated = @(); $known = 0; $skippedTool = 0
 $newRows = @(); $aliasRows = @(); $dupAlias = @()
+$updateRows = @(); $updateNames = @()   # 上游修改已有项目（媒体有增删）
 
 foreach ($f in $repoFiles) {
     $rawName = [System.IO.Path]::GetFileName($f)
@@ -163,13 +166,55 @@ foreach ($f in $repoFiles) {
 
     $g = Parse-Gallery $txt
     $name = Make-SafeName $g.Title $g.Date
-    # 同名但内容确实不同（同标题同日期的另一份画廊，或原画廊资源有增删）→ 追加 (2)/(3) 序号，避免覆盖
-    $isUpdate = $false
+    # 同名项目已入库：判断是上游修改了媒体内容，还是仅仅改了文案
     if ($byName.ContainsKey($name)) {
-        $isUpdate = $true
-        $i = 2
-        while ($byName.ContainsKey(('{0}({1})' -f $name, $i))) { $i++ }
-        $name = ('{0}({1})' -f $name, $i)
+        $existing = $byName[$name]
+        # 重新解析旧基线 HTML 取旧媒体 URL
+        $oldHtml = Join-Path $Cfg.BaselineDir ($name + '.html')
+        $oldImgs = @(); $oldVids = @()
+        if ([System.IO.File]::Exists($oldHtml)) {
+            $oldTxt = [System.IO.File]::ReadAllText($oldHtml, [System.Text.Encoding]::UTF8)
+            $oldG = Parse-Gallery $oldTxt
+            $oldImgs = $oldG.Imgs; $oldVids = $oldG.Vids
+        }
+        $newImgs = $g.Imgs; $newVids = $g.Vids
+        # 比较媒体 URL 集合：只看增减，不看顺序
+        $oldImgSet = @($oldImgs | Sort-Object -Unique)
+        $newImgSet = @($newImgs | Sort-Object -Unique)
+        $oldVidSet = @($oldVids | Sort-Object -Unique)
+        $newVidSet = @($newVids | Sort-Object -Unique)
+        $imgAdded = $newImgSet | Where-Object { $oldImgSet -notcontains $_ }
+        $imgRemoved = $oldImgSet | Where-Object { $newImgSet -notcontains $_ }
+        $vidAdded = $newVidSet | Where-Object { $oldVidSet -notcontains $_ }
+        $vidRemoved = $oldVidSet | Where-Object { $newVidSet -notcontains $_ }
+        $mediaChanged = (@($imgAdded).Count + @($imgRemoved).Count + @($vidAdded).Count + @($vidRemoved).Count) -gt 0
+
+        if (-not $mediaChanged) {
+            # 仅文案/元数据变更，gkey 不变：视为别名，跳过不重下
+            $ar = [pscustomobject]@{
+                hash = $hash; datedName = $existing.datedName; date = $existing.date
+                imgExp = $existing.imgExp; vidExp = $existing.vidExp
+                firstSeen = $existing.firstSeen; lastProcessed = $existing.lastProcessed; gkey = $existing.gkey
+            }
+            $aliasRows += $ar; $byHash[$hash] = $ar
+            $dupAlias += ("{0}  与已入库项目同一画廊 -> {1}（仅文案变更）" -f $rawName, $existing.datedName)
+            continue
+        }
+        # 媒体有增减：更新已有 manifest 条目，补下新增部分到原文件夹
+        $existing.hash = $hash
+        $existing.imgExp = [string]$newImgs.Count
+        $existing.vidExp = [string]$newVids.Count
+        $existing.gkey = $key
+        # 更新基线 HTML（让 run_all 解析到新的 URL 列表）
+        if (-not $DryRun) {
+            [System.IO.File]::Copy($f, (Join-Path $Cfg.BaselineDir ($name + '.html')), $true)
+        }
+        $updateRows += $existing
+        $updateNames += $name
+        $dImg = @($imgAdded).Count; $dVid = @($vidAdded).Count
+        $rImg = @($imgRemoved).Count; $rVid = @($vidRemoved).Count
+        $updated += ("{0}  (图 {1}->{2}, 视 {3}->{4})  <- {5}" -f $name, $oldImgs.Count, $newImgs.Count, $oldVids.Count, $newVids.Count, $rawName)
+        continue
     }
 
     $row = [pscustomobject]@{
@@ -181,8 +226,7 @@ foreach ($f in $repoFiles) {
     $newRows += $row
     # 三个索引都当场回填，否则同一轮里出现两份相同画廊时不会被识别为重复
     $byName[$name] = $row; $byHash[$hash] = $row; $byKey[$key] = $row
-    if ($isUpdate) { $updated += ("{0}  (图{1}/视{2})  <- 原文件 {3}" -f $name, $g.Imgs.Count, $g.Vids.Count, $rawName) }
-    else { $new += ("{0}  (图{1}/视{2})  <- 原文件 {3}" -f $name, $g.Imgs.Count, $g.Vids.Count, $rawName) }
+    $new += ("{0}  (图{1}/视{2})  <- 原文件 {3}" -f $name, $g.Imgs.Count, $g.Vids.Count, $rawName)
 
     if (-not $DryRun) {
         [System.IO.File]::Copy($f, (Join-Path $Cfg.BaselineDir ($name + '.html')), $true)
@@ -191,18 +235,19 @@ foreach ($f in $repoFiles) {
 
 Write-Host ("  仓库 HTML : {0} 个（工具页 {1} 个已排除）" -f $repoFiles.Count, $skippedTool)
 Write-Host ("  已处理过  : {0}" -f $known) -ForegroundColor DarkGray
-Write-Host ("  重复投稿  : {0} 个（同一画廊换文件名/微异重复，已跳过不重下）" -f $dupAlias.Count) -ForegroundColor Magenta
+Write-Host ("  重复投稿/文案变更: {0} 个（同一画廊换文件名/微异重复，已跳过不重下）" -f $dupAlias.Count) -ForegroundColor Magenta
 foreach ($x in $dupAlias) { Write-Host ("     = {0}" -f $x) }
 Write-Host ("  新增项目  : {0}" -f $new.Count) -ForegroundColor Green
 foreach ($x in $new) { Write-Host ("     + {0}" -f $x) }
-Write-Host ("  内容更新  : {0}（同标题同日期但资源列表不同，确实是一份新内容）" -f $updated.Count) -ForegroundColor Yellow
+Write-Host ("  上游修改已有项目: {0}（媒体有增减，将补下新增部分到原文件夹）" -f $updated.Count) -ForegroundColor Yellow
 foreach ($x in $updated) { Write-Host ("     ~ {0}" -f $x) }
 
 # ---------- 4) 落盘 ----------
 Write-Title '步骤 3/4  写入基线与待处理清单'
 $changed = ($new.Count + $updated.Count + $aliasRows.Count)
+$hasWork = ($newRows.Count + $updateNames.Count)
 if ($DryRun) {
-    if ($changed -gt 0) { Write-Host ("  [DryRun] 将新增 {0} 行 manifest（其中 {1} 行为重复别名），并写入 {2} 条 pending" -f $changed, $aliasRows.Count, $newRows.Count) }
+    if ($changed -gt 0) { Write-Host ("  [DryRun] 将新增 {0} 行 manifest（其中 {1} 行为重复别名），更新 {2} 行已有项目，并写入 {3} 条 pending" -f $changed, $aliasRows.Count, $updateNames.Count, ($newRows.Count + $updateNames.Count)) }
     else { Write-Host '  [DryRun] 无变化' }
     if ($manifestDirty) { Write-Host '  [DryRun] 将为 manifest 补齐 gkey 列' }
 } elseif ($changed -eq 0 -and -not $manifestDirty) {
@@ -214,20 +259,27 @@ if ($DryRun) {
     $all = @($all) + @($newRows) + @($aliasRows)
     $all | Export-Csv -LiteralPath $Cfg.Manifest -NoTypeInformation -Encoding UTF8
     Write-Host ("  manifest : {0} 行 -> {1}" -f $all.Count, $Cfg.Manifest) -ForegroundColor $(if ($manifestDirty) { 'Cyan' } else { 'DarkGray' })
-    if ($newRows.Count -gt 0) {
+    if ($hasWork -gt 0) {
         # 与上一轮遗留的 pending 合并而不是直接覆盖：否则上次没下完的项目会被抹掉
         $prev = @()
         if ([System.IO.File]::Exists($Cfg.PendingFile)) {
             $prev = @([System.IO.File]::ReadAllLines($Cfg.PendingFile) | ForEach-Object { $_.Trim() } | Where-Object { $_ })
         }
-        $pendingNames = @((@($prev) + @($newRows | ForEach-Object { $_.datedName })) | Select-Object -Unique)
+        $pendingNames = @((@($prev) + @($newRows | ForEach-Object { $_.datedName }) + @($updateNames)) | Select-Object -Unique)
         [System.IO.File]::WriteAllLines($Cfg.PendingFile, $pendingNames, (New-Object System.Text.UTF8Encoding($true)))
-        Write-Host ("  pending  : {0} 条（本次新增 {1}）-> {2}" -f $pendingNames.Count, $newRows.Count, $Cfg.PendingFile)
+        Write-Host ("  pending  : {0} 条（本次新增 {1}，上游修改 {2}）-> {3}" -f $pendingNames.Count, $newRows.Count, $updateNames.Count, $Cfg.PendingFile)
         $tImg = ($newRows | Measure-Object -Property imgExp -Sum).Sum
         $tVid = ($newRows | Measure-Object -Property vidExp -Sum).Sum
-        Write-Host ("  预计工作量: 图片 {0} 张 / 视频 {1} 个" -f $tImg, $tVid) -ForegroundColor Cyan
+        if ($tImg -eq $null) { $tImg = 0 }; if ($tVid -eq $null) { $tVid = 0 }
+        # 修改项目的工作量只能从基线 HTML 差异估算，这里只报新增项目的
+        if ($tImg -gt 0 -or $tVid -gt 0) {
+            Write-Host ("  预计工作量: 图片 {0} 张 / 视频 {1} 个（不含修改项目的增量）" -f $tImg, $tVid) -ForegroundColor Cyan
+        }
+        if ($updateNames.Count -gt 0) {
+            foreach ($un in $updateNames) { Write-Host ("     ~ {0}（补下新增媒体）" -f $un) -ForegroundColor Yellow }
+        }
     } else {
-        Write-Host '  本轮无新项目，pending 保持不变' -ForegroundColor DarkGray
+        Write-Host '  本轮无新项目也无修改项目，pending 保持不变' -ForegroundColor DarkGray
     }
 }
 

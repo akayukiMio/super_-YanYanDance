@@ -468,7 +468,7 @@ function localOp(what) {
     outdir: { path: CFG.outDir, kind: 'folder' },
     logdir: { path: CFG.logDir, kind: 'folder' },
     doc: { path: docPath, kind: 'file' },
-    shortcut: { path: path.join(CFG.projectDir, 'start-web.cmd'), kind: 'lnk' },
+    shortcut: { path: path.join(CFG.projectDir, 'start-web.vbs'), kind: 'lnk' },
   };
   const t = targets[what];
   if (!t) throw httpError(400, `未知的本机操作: ${what}`);
@@ -553,6 +553,12 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST' && p === '/api/local') {
         const body = await readBody(req);
         return sendJson(res, 200, { op: String(body.what || ''), ...localOp(String(body.what || '')) });
+      }
+      if (req.method === 'POST' && p === '/api/shutdown') {
+        await readBody(req);
+        sendJson(res, 200, { ok: true, msg: '服务正在停止…' });
+        setTimeout(() => process.exit(0), 300);
+        return;
       }
       return sendJson(res, 404, { error: `未知接口 ${req.method} ${p}` });
     }
@@ -653,7 +659,7 @@ async function main() {
     console.log(`  引擎      ${PS}（仅编排，逻辑仍在 sync/run_all/audit/maint/dedupe 内）`);
     console.log(`  产物目录  ${CFG.outDir}`);
     console.log(`  基线      ${st.baseline} 个 HTML | pending ${st.pending} 项 | manifest ${st.manifestRows} 行`);
-    console.log('  提示      关掉本窗口即停止服务；控制台菜单 start.cmd 仍然可用');
+    console.log('  提示      服务在后台运行（无窗口）；用页面顶部的「停止服务」按钮关闭');
     console.log('');
     if (OPEN_BROWSER) openBrowser(PORT0);
   });

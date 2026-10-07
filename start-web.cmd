@@ -13,6 +13,6 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [web] starting http://127.0.0.1:8787/  (close this window to stop)
+echo [web] starting http://127.0.0.1:8787/  (use start-web.vbs for silent launch)
 node "%~dp0web\server.mjs" --open
 if errorlevel 1 pause

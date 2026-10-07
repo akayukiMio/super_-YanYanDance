@@ -44,9 +44,15 @@ switch ($What) {
             $desktop = [Environment]::GetFolderPath('Desktop')
             $lnkPath = Join-Path $desktop '画廊搬运台 Web.lnk'
             $lnk = $ws.CreateShortcut($lnkPath)
-            $lnk.TargetPath = (Join-Path $ProjectRoot 'start-web.cmd')
+            # VBS 启动器：窗口完全隐藏，不再有 cmd 挂起在后台
+            $vbs = Join-Path $ProjectRoot 'start-web.vbs'
+            if ([System.IO.File]::Exists($vbs)) {
+                $lnk.TargetPath = $vbs
+            } else {
+                $lnk.TargetPath = (Join-Path $ProjectRoot 'start-web.cmd')
+            }
             $lnk.WorkingDirectory = $ProjectRoot
-            $lnk.Description = '启动画廊搬运台 Web 控制台并在浏览器打开'
+            $lnk.Description = '启动画廊搬运台 Web 控制台并在浏览器打开（后台运行，无窗口）'
             # 图标：由 tools\make_icon.ps1 生成（换图 = 重跑那个脚本 + 重点一次本按钮）
             $ico = Join-Path $PSScriptRoot 'assets\app.ico'
             if ([System.IO.File]::Exists($ico)) {
@@ -56,7 +62,7 @@ switch ($What) {
                 $icoLoc = if ($ico -match '\s') { ('"{0}",0' -f $ico) } else { ('{0},0' -f $ico) }
                 $lnk.IconLocation = $icoLoc
             }
-            $lnk.WindowStyle = 7   # 7 = 最小化：服务日志窗口不抢屏，浏览器起来就是主角
+            $lnk.WindowStyle = 1   # VBS 自己管隐藏；万一回退到 .cmd 也不至于完全看不见
             $lnk.Save()
             Write-Host ("[local] 已创建桌面快捷方式: {0}" -f $lnkPath)
             Write-Host ("[local] 图标: {0}" -f $lnk.IconLocation)

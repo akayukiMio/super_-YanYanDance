@@ -421,6 +421,18 @@ async function refreshJobs() {
 $('#refreshBtn').addEventListener('click', async () => {
   await refreshStatus(true); await refreshJobs(); toast('状态已刷新', 'ok');
 });
+$('#shutdownBtn').addEventListener('click', async () => {
+  if (!confirm('确定停止后台 Web 服务？停止后需重新双击快捷方式启动。')) return;
+  try {
+    await api('/api/shutdown', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    toast('服务已停止', 'ok');
+  } catch (e) {
+    toast('停止失败：' + e.message, 'err');
+  }
+  setTimeout(() => {
+    $('#svc').innerHTML = '<i class="dot error"></i>服务已停止';
+  }, 500);
+});
 $('#dockToggle').addEventListener('click', () => $('#dock').classList.toggle('collapsed'));
 $('#logClear').addEventListener('click', clearLog);
 $('#jobStop').addEventListener('click', async () => {
